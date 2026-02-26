@@ -1,0 +1,126 @@
+#@author dau23
+
+##datastructs
+### datastruct __init__ - provides checks/sets variables all datastructs share.
+datastruct__init__ = {
+    if = {  limit = { check_variable = { load_object > 1000 }} 
+            set_temp_variable = { object_archetype = load_object }
+            load_object_schema_meta = yes
+            if = {  limit = { has_variable = object_anchor } set_temp_variable = { object_token = object_anchor }}
+            else = { set_temp_variable = { object_token = load_object }}                    
+            and = { check_variable = { object_type > 0 } 
+                    check_variable = { object_schema^num > 0 }
+                    check_variable = { object_schema_type^num > 0 }}
+    } else = { log = "[datastruct_prepend]__init__ failed." always = no }
+}
+
+### load object schema - triggers the targets scripted trigger to get metadata
+load_object_schema_meta = {
+    clear_temp_array = object_schema clear_temp_array = object_schema_type
+    meta_trigger = {    
+        text = { [OA]_object_schema = yes } 
+        OA = "[?object_archetype.GetTokenKey]" 
+    } 
+}
+
+###dataframe
+#### dataframe __init__ - launches a new dataframe session
+dataframe__init__ = {
+    if = {  limit = { datastruct__init__ = yes } 
+            set_temp_variable = { dataframe_attrs = object_schema^num }
+            set_temp_variable = { dataframe_attr = object_schema^0 }
+            dataframe_get_length = yes
+            set_temp_variable = { dataframe_length = ret_val }
+            if = {  limit = { check_variable = { ret_val > 0 }} 
+                    set_temp_variable = { dataframe_index  = ret_val }
+                    subtract_from_temp_variable = { dataframe_index = 1 }
+            } else = { set_temp_variable = { dataframe_index = 0 }}
+            always = yes
+    } else = { log = "[datastruct_prepend] __init__ failed" always = no }      
+}
+
+#### dataframe gets the index where search_attr is equal to search_attr_val
+get_index_where_attr_is_v = {
+    if = {  limit = { 
+                AND = { check_variable = { object_token > 0 }
+                        check_variable = { object_type = token:dataframe }
+                        check_variable = { search_attr > 0 }
+                        check_variable = { search_attr_val > 0 }
+                }
+            } 
+            if = {  limit = { check_variable = { object_global_b = 1 } } 
+                    get_index_where_attr_is_v_global = yes
+            } else = { get_index_where_attr_is_v_scoped = yes }
+    } else = { always = no }
+}
+get_index_where_attr_is_v_scoped = {
+        meta_trigger = {
+            debug = yes
+            text = {
+                any_of = {
+                    array = [OT]_[ATTR]
+                    set_temp_variable = { ret_val = i }
+                    check_variable = { v = [VALUE] } 
+                }
+            } 
+            OT    = "[?object_token.GetTokenKey]"
+            ATTR  = "[?search_attr.GetTokenKey]"
+            VALUE = "[?search_attr_val]"
+        }
+}
+get_index_where_attr_is_v_global = {
+        meta_trigger = {
+            debug = yes
+            text = {
+                any_of = {
+                    array = global.[OT]_[ATTR]
+                    set_temp_variable = { ret_val = i }
+                    check_variable = { v = [VALUE] } 
+                }
+            } 
+            OT    = "[?object_token.GetTokenKey]"  
+            ATTR  = "[?search_attr.GetTokenKey]"
+            VALUE = "[?search_attr_val]"
+        }
+}
+
+#### dataframe get length - gets the number of rows in the df
+dataframe_get_length = {
+    if = {  limit = { check_variable = { object_global_b = 1 } }  
+            dataframe_get_length_global = yes
+    } else = { dataframe_get_length_scoped = yes }
+}
+dataframe_get_length_scoped = {        
+    meta_trigger = {    text = { set_temp_variable = { ret_val = [OT]_[ATTR]^num } } 
+                        OT = "[?object_token.GetTokenKey]" 
+                        ATTR = "[?v.GetTokenKey]" }
+}
+dataframe_get_length_global = {        
+    meta_trigger = {    text = { set_temp_variable = { ret_val = global.[OT]_[ATTR]^num } } 
+                        OT = "[?object_token.GetTokenKey]" 
+                        ATTR = "[?v.GetTokenKey]" }
+}
+#### dataframe, get current value - used in debugging, used in loop to get all attrs of session
+get_dataframe_value_from_session = {
+    meta_trigger = {
+        text = {
+            set_temp_variable = { ret_val = [ATTR] }
+        }
+        ATTR  = "[?v.GetTokenKey]"
+    }
+}
+#### dataframe integrity check
+check_integrity_of_dataframe = {
+    if = {  limit = { 
+                dataframe_get_length = yes  
+                set_temp_variable = { INTEGRITY_INT = ret_val }
+                all_of = { 
+                    array = object_schema 
+                    if = {  limit = { dataframe_get_length = yes } 
+                            check_variable = { INTEGRITY_INT = ret_val }
+                    }
+                }
+            }
+            always = yes
+    } else = { always = no }
+}

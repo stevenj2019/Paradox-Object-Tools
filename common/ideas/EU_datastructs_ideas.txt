@@ -1,0 +1,15 @@
+ideas = {
+    data_structs = {
+        super               = {} #@object_instance super - Not Implemented (have not needed yet)
+        object              = {} #@object_instance object - Not Implements (feels pointless?)
+        dataframe           = {} #@object_instance dataframe
+    }
+    data_structs_attr_types = {
+        array_type      = {} #@attr array_type
+        #implemented.
+        token_type      = {} #@attr token_type 
+        object_type     = {} #@attr object_type
+        int_type        = {} #@attr int_type
+        bit_type        = {} #@attr bit_type(boolean)
+    }
+}

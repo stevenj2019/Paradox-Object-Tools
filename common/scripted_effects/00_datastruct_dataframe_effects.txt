@@ -1,0 +1,267 @@
+#@author dau23
+## dataframe generic commands.
+### Close dataframe Session - clears both loaded row and metadata
+dataframe_close = {
+    clear_loaded_row = yes
+    clear_variable = dataframe_index
+    clear_variable = dataframe_attribute
+    #TODO this should _technically_ be its own effect of datastruct_close (but itd be redundant rn)
+    datatype_close = yes
+}
+datatype_close = {
+    clear_variable = object_token
+    clear_variable = object_archetype
+    clear_temp_array = object_schema
+    clear_temp_array = object_schema_type
+    clear_variable = object_global_b
+}
+### Clear loaded row (does not delete, just clears vars from session)
+clear_loaded_row = {
+    for_each_loop = {  array = object_schema 
+                        meta_effect = { 
+                                text = { clear_variable = [ATTR] } 
+                                ATTR = "[?v.GetTokenKey]"}
+                    }
+}
+### debugging - dump session data - dumps the currently loaded variables.
+dump_session_data = {
+    for_each_loop = { 
+        array = object_schema
+        if = { limit = { get_dataframe_value_from_session = yes }
+                log = "[?v.GetTokenKey] = [?ret_val]"
+        }
+    }
+}
+## dataframe Append Operations
+### add_row_to_dataframe - tail
+add_row_to_dataframe = { 
+    for_each_loop = { 
+        array = object_schema
+        if = {  limit = { check_variable = { v > 0 } } 
+                if = {  limit = { check_variable = { object_global_b = 1 } }  
+                        append_value_to_array_v_global = yes
+                } else = { append_value_to_array_v_scoped = yes }
+        } else = { log = "OBJECT:[?object_token.GetTokenKey] INDEX:[?i] SCHEMA TYPE ERROR." }
+    }
+    add_to_temp_variable = { dataframe_length = 1 }
+}
+append_value_to_array_v_scoped = {
+    meta_effect = { text = { add_to_array = { [OBJECT]_[ATTR] = [ATTR] } } 
+                    OBJECT = "[?object_token.GetTokenKey]" ATTR = "[?v.GetTokenKey]" 
+    }
+}
+append_value_to_array_v_global = {
+    meta_effect = { text = { add_to_array = { global.[OBJECT]_[ATTR] = [ATTR] } } 
+                    OBJECT = "[?object_token.GetTokenKey]" ATTR = "[?v.GetTokenKey]" 
+    }
+}
+### add_row_to_dataframe - head
+add_row_to_dataframe_head = { 
+    for_each_loop = { 
+        array = object_schema
+        if = {  limit = { check_variable = { v > 0 } } 
+                if = {  limit = { check_variable = { object_global_b = 1 } }  
+                        append_value_to_array_head_global = yes
+                } else = { append_value_to_array_head_scoped = yes }
+        } else = { log = "OBJECT:[?object_token.GetTokenKey] INDEX:[?i] SCHEMA TYPE ERROR." }
+    }
+    add_to_temp_variable = { dataframe_length = 1 }
+}
+append_value_to_array_head_scoped = {
+    meta_effect = { text = { add_to_array = { array = [OBJECT]_[ATTR] value = [ATTR] index = 0 }}
+                    OBJECT = "[?object_token.GetTokenKey]" ATTR = "[?v.GetTokenKey]" }
+}
+append_value_to_array_head_global = {
+    meta_effect = { text = { add_to_array = { array = global.[OBJECT]_[ATTR] value = [ATTR] index = 0 }}
+                    OBJECT = "[?object_token.GetTokenKey]" ATTR = "[?v.GetTokenKey]" }
+}
+## dataframe read operations
+### read dataframe index - loads row
+read_dataframe_index  = {
+    if = { 
+        limit = { 
+            AND = { 
+                has_variable = object_token
+                has_variable = dataframe_index
+            } 
+        }
+        if = {  limit = { check_variable = { object_global_b = 1 } } 
+                for_each_loop = { array = object_schema load_val_from_global_dataframe = yes }
+        } else = { for_each_loop = { array = object_schema load_val_from_scoped_dataframe = yes }}
+    } else = { log = "read_dataframe_index failed." }
+}
+load_val_from_scoped_dataframe = {
+    meta_effect = {
+        text = { set_variable = { [ATTR] = [OT]_[ATTR]^[INDEX] }}
+        OT = "[?object_token.GetTokenKey]"
+        ATTR = "[?v.GetTokenKey]"
+        INDEX = "[?dataframe_index|.0]"
+    }
+}
+load_val_from_global_dataframe = {
+    meta_effect = {
+        text = { set_variable = { [ATTR] = global.[OT]_[ATTR]^[INDEX] }}
+        OT = "[?object_token.GetTokenKey]"
+        ATTR = "[?v.GetTokenKey]"
+        INDEX = "[?dataframe_index|.0]"
+    }
+}    
+### read_object_dataframe_attr - loads column
+read_object_dataframe_attr = {
+    if = {  limit = { and = { check_variable = { object_token > 0 } 
+                                check_variable = { dataframe_attr > 0 }}}
+            clear_temp_array = ret_array
+            if = {  limit = { check_variable = { object_global_b = 1 } } 
+                    get_attr_from_global_dataframe = yes
+            } else = { get_attr_from_scoped_dataframe = yes }
+    } else = { log = "[datastruct_prepend] read_object_dataframe_attr failed" }
+}
+get_attr_from_scoped_dataframe = {
+    meta_effect = {
+        text = {
+            for_each_loop = { 
+                array = [OT]_[ATTR] 
+                value = val
+                add_to_temp_array = { ret_array = val }
+            }
+        }
+        OT = "[?object_token.GetTokenKey]"
+        ATTR = "[?v.GetTokenKey]"
+    }
+}
+get_attr_from_global_dataframe = {
+    meta_effect = {
+        text = {
+            for_each_loop = { 
+                array = global.[OT]_[ATTR] 
+                value = val
+                add_to_temp_array = { ret_array = val }
+            }
+        }
+        OT = "[?object_token.GetTokenKey]"
+        ATTR = "[?v.GetTokenKey]"
+    }
+}
+## dataframe update operations
+### update dataframe index - commits session tokens to the selected index (row)
+update_dataframe_index  = {
+    if = {
+        limit = { 
+            AND = { 
+                has_variable = dataframe_index
+                has_variable = object_schema^num
+                has_variable = object_token
+            } 
+        }
+        if = {  limit = { check_variable = { object_global_b = 1 } } 
+                for_each_loop = { array = object_schema load_val_to_global_dataframe = yes }
+        } else = { for_each_loop = { array = object_schema load_val_to_scoped_dataframe = yes }}
+    } else = { log = "update_dataframe_index failed" }
+}
+load_val_to_scoped_dataframe = {
+    meta_effect = {
+        text = { set_variable = { [OT]_[ATTR]^[INDEX] = var:[ATTR] } }
+        OT = "[?object_token.GetTokenKey]"
+        ATTR   = "[?v.GetTokenKey]"
+        INDEX  = "[?dataframe_index|.0]"
+    }
+}
+load_val_to_global_dataframe = {
+    meta_effect = {
+        text = { set_variable = { global.[OT]_[ATTR]^[INDEX] = var:[ATTR] } }
+        OT = "[?object_token.GetTokenKey]"
+        ATTR   = "[?v.GetTokenKey]"
+        INDEX  = "[?dataframe_index|.0]"
+    }
+}
+### update dataframe attr - commits session tokens to the selected attr (column)
+update_dataframe_attr = {
+    if = {
+        limit = { 
+            AND = { 
+                has_variable = dataframe_attr
+                has_variable = object_schema^num
+                has_variable = object_token
+            } 
+        }
+        if = {  limit = { check_variable = { object_global_b = 1 } } 
+                for_each_loop = { array = object_schema update_global_dataframe_attr = yes }
+        } else = { for_each_loop = { array = object_schema update_scoped_dataframe_attr = yes }}
+    } else = { log = "update_dataframe_attr failed" }
+}
+update_scoped_dataframe_attr = {
+    for_each_loop = {
+        array = input_array
+        meta_effect = {
+            text = { set_variable = { [OT]_[ATTR]^i = var:v }}
+            OT = "[?object_token.GetTokenKey]"
+            ATTR   = "[?dataframe_attr.GetTokenKey]"
+        }
+    }
+}
+update_global_dataframe_attr = {
+    for_each_loop = {
+        array = input_array
+        meta_effect = {
+            text = { set_variable = { global.[OT]_[ATTR]^i = var:v }}
+            OT = "[?object_token.GetTokenKey]"
+            ATTR   = "[?dataframe_attr.GetTokenKey]"
+        }
+    }
+}
+## dataframe delete operations
+### delete dataframe - deletes the whole object once it is finished with.
+delete_dataframe = {
+    if = { limit = { has_variable = object_token }}
+    if = {  limit = { check_variable = { object_global_b = 1 } }  
+        for_each_loop = { array = object_schema delete_dataframe_attr_arr_global = yes }
+    } else = {
+        for_each_loop = { array = object_schema delete_dataframe_attr_arr_scoped = yes }
+    }
+}
+delete_dataframe_attr_arr_scoped = {
+    meta_effect = { text = { clear_array = [OBJECT]_[ATTR] }
+                    OBJECT = "[?object_token.GetTokenKey]" ATTR = "[?v.GetTokenKey]" 
+    }
+}
+delete_dataframe_attr_arr_global = {
+    meta_effect = { text = { clear_array = global.[OBJECT]_[ATTR] } 
+                    OBJECT = "[?object_token.GetTokenKey]" ATTR = "[?v.GetTokenKey]" 
+    }
+}
+### clear dataframe index - deletes the selected row from the dataframe.
+clear_dataframe_index = {
+    if = {  limit = { check_variable = { object_global_b = 1 } }
+            for_each_loop = { array = object_schema delete_attr_from_index_global = yes }
+    } else = { for_each_loop = { array = object_schema delete_attr_from_index_scoped = yes }}
+    subtract_from_temp_variable = { dataframe_length = 1 }
+}
+delete_attr_from_index_scoped = {
+    meta_effect = { text = { remove_from_array = { array = [OBJECT]_[ATTR] index = [INDEX] }}
+                    OT = "[?object_token.GetTokenKey]"
+                    ATTR   = "[?v.GetTokenKey]"
+                    INDEX  = "[?dataframe_index|.0]"
+    }
+}
+delete_attr_from_index_global = {
+    meta_effect = { text = { remove_from_array = { array = global.[OT]_[ATTR] index = [INDEX] }}
+                    OT     = "[?object_token.GetTokenKey]"
+                    ATTR   = "[?v.GetTokenKey]"
+                    INDEX  = "[?dataframe_index|.0]"
+    }
+}
+
+#Debugging Commands
+## dataframe Session Commands
+### DEBUG 
+#### dump_object_metadata - Logs built-in values
+    ##TODO write this (if i do not find it)
+#### dump_session_data - Logs values of currently loaded rows
+dump_session_data = {
+    for_each_loop = { 
+        array = object_schema
+        if = { limit = { get_dataframe_value_from_session = yes }
+                log = "[?v.GetTokenKey] = [?ret_val]"
+        }
+    }
+}
