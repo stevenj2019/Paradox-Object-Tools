@@ -43,7 +43,7 @@ beyond this, there is little reason to have a further understanding, unless you 
 ## Files 
 00_* = these are the core of the object tooling, and will be required with ANY usage of these tools 
 
-01_* = debugging tools, these require the render_array from https://gist.github.com/cbrzeczysz/2583f1e4c71b566f005eaea036e8494d (Full credit to ciara) to work correctly
+01_* = debugging tools, these require the render_array from https://gist.github.com/cbrzeczysz/2583f1e4c71b566f005eaea036e8494d (Full credit to ciara) to work correctly (this code is currently unavailable, is a little finnicky)
 
 02_* = example files, due to the flexible nature of paradox scripting with variables, this can be used in a wide array of ways, 
 and ill provide as many of those ways, as i make, in this repo
