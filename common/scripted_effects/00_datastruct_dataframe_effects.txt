@@ -5,7 +5,6 @@ dataframe_close = {
     clear_loaded_row = yes
     clear_variable = dataframe_index
     clear_variable = dataframe_attribute
-    #TODO this should _technically_ be its own effect of datastruct_close (but itd be redundant rn)
     datatype_close = yes
 }
 datatype_close = {
@@ -41,6 +40,7 @@ add_row_to_dataframe = {
                 if = {  limit = { check_variable = { object_global_b = 1 } }  
                         append_value_to_array_v_global = yes
                 } else = { append_value_to_array_v_scoped = yes }
+                # log = "[?v|.0]"
         } else = { log = "OBJECT:[?object_token.GetTokenKey] INDEX:[?i] SCHEMA TYPE ERROR." }
     }
     add_to_temp_variable = { dataframe_length = 1 }
@@ -250,12 +250,6 @@ delete_attr_from_index_global = {
                     INDEX  = "[?dataframe_index|.0]"
     }
 }
-
-#Debugging Commands
-## dataframe Session Commands
-### DEBUG 
-#### dump_object_metadata - Logs built-in values
-    ##TODO write this (if i do not find it)
 #### dump_session_data - Logs values of currently loaded rows
 dump_session_data = {
     for_each_loop = { 
