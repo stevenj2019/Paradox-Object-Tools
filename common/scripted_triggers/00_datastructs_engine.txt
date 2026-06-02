@@ -55,7 +55,6 @@ get_index_where_attr_is_v = {
 }
 get_index_where_attr_is_v_scoped = {
         meta_trigger = {
-            debug = yes
             text = {
                 any_of = {
                     array = [OT]_[ATTR]
@@ -70,7 +69,6 @@ get_index_where_attr_is_v_scoped = {
 }
 get_index_where_attr_is_v_global = {
         meta_trigger = {
-            debug = yes
             text = {
                 any_of = {
                     array = global.[OT]_[ATTR]
